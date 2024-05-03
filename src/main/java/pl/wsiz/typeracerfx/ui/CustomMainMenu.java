@@ -23,11 +23,15 @@ public class CustomMainMenu extends FXGLMenu {
         background.setFitWidth(FXGL.getAppWidth());
         background.setFitHeight(FXGL.getAppHeight());
         getContentRoot().getChildren().add(background);
+        getContentRoot().getStylesheets().add(getClass().getResource("/assets/ui/css/style.css").toExternalForm());
+
 
         // Create buttons
         FXGLButton btnStart = new FXGLButton("START");
         FXGLButton btnSettings = new FXGLButton("SETTINGS");
         FXGLButton btnExit = new FXGLButton("EXIT");
+
+        btnStart.getStyleClass().add("button-style");
 
         // Set button actions
         btnStart.setOnAction(e -> fireNewGame());

@@ -6,6 +6,7 @@ module pl.wsiz.typeracerfx {
     requires com.fasterxml.jackson.databind;
 
     opens assets.textures;
+    opens assets.ui.css;
 
     opens pl.wsiz.typeracerfx to javafx.fxml;
     exports pl.wsiz.typeracerfx;
