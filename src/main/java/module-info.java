@@ -5,6 +5,10 @@ module pl.wsiz.typeracerfx {
     requires com.almasb.fxgl.all;
     requires com.fasterxml.jackson.databind;
 
+    opens assets.textures;
+
     opens pl.wsiz.typeracerfx to javafx.fxml;
     exports pl.wsiz.typeracerfx;
+    exports pl.wsiz.typeracerfx.ui;
+    opens pl.wsiz.typeracerfx.ui to javafx.fxml;
 }

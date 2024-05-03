@@ -2,19 +2,21 @@ package pl.wsiz.typeracerfx;
 
 import com.almasb.fxgl.app.GameApplication;
 import com.almasb.fxgl.app.GameSettings;
+import com.almasb.fxgl.app.scene.FXGLMenu;
+import com.almasb.fxgl.app.scene.SceneFactory;
 import com.almasb.fxgl.dsl.FXGL;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.AnchorPane;
-
-
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
+import pl.wsiz.typeracerfx.ui.CustomMainMenu;
 
 import java.io.IOException;
+
 
 public class HelloApplication extends GameApplication {
 
@@ -30,8 +32,16 @@ public class HelloApplication extends GameApplication {
         settings.setHeight(800);
         settings.setTitle("TypeRacer");
         settings.setVersion("0.1");
-        settings.setAppIcon("/icon.png");
+        settings.setAppIcon("icon.png");
+        settings.setMainMenuEnabled(true);
+        settings.setSceneFactory(new SceneFactory() {
+            @Override
+            public FXGLMenu newMainMenu() {
+                return new CustomMainMenu();
+            }
+        });
     }
+
 
     @Override
     protected void initUI() {
@@ -39,8 +49,6 @@ public class HelloApplication extends GameApplication {
             // Load UI from FXML file
             FXMLLoader loader = new FXMLLoader(getClass().getResource("hello-view.fxml"));
             AnchorPane root = loader.load();
-
-            System.out.println(getClass().getResource("/icon.png"));
 
             // Get the controller
             Controller controller = loader.getController();
@@ -116,7 +124,6 @@ public class HelloApplication extends GameApplication {
             textFlow.getChildren().add(text);
         }
     }
-
 
     public static void main(String[] args) {
         launch(args);
