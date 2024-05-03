@@ -8,11 +8,11 @@ import java.util.Random;
 
 public class ApiCall {
     public String sendGetRequest() {
-        StringBuilder finalText = new StringBuilder();
+        String finalText = "";
 
         try {
             // Tworzenie obiektu URL z adresem API Wolnych Lektur
-            URL url = new URL("https://wolnelektury.pl/media/book/txt/wolter-biale-i-czarne.txt");
+            URL url = new URL("https://wolnelektury.pl/media/book/txt/lalka-tom-pierwszy.txt");
 
             // Otwieranie połączenia HTTP
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
@@ -35,13 +35,21 @@ public class ApiCall {
 
                 // Wybranie odpowiednio losowego fragmentu
                 String[] lines = response.toString().split(";");
-                int minline = 0;
+                int minline = 1;
                 int maxline = lines.length;
-
                 Random random = new Random();
+                finalText += lines[random.nextInt(maxline - minline) + minline];
 
-                finalText.append(lines[random.nextInt(maxline - minline) + minline]);
+                // Usunięcie pierwszego znaku spacji
+                finalText = finalText.substring(1);
 
+                finalText = finalText.replace("— ", "");
+
+                finalText = finalText.replace("\n", " ");
+
+                finalText = finalText.replace("  ", " ");
+
+                System.out.println("\u001B[31mCzerwony tekst\u001B[0m");
                 System.out.println(finalText);
 
             } else {
@@ -55,6 +63,6 @@ public class ApiCall {
             e.printStackTrace();
         }
 
-        return finalText.toString();
+        return finalText.substring(0);
     }
 }

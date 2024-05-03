@@ -101,7 +101,7 @@ public class HelloApplication extends GameApplication {
         String textToAdd = apiCall.sendGetRequest();
 
         // Dopóki tekst jest zbyt krótki lub zbyt długi, losuj ponownie
-        while (textToAdd.length() < 150 || textToAdd.length() > 500) {
+        while (textToAdd.length() < 150 || textToAdd.length() > 600) {
             textToAdd = apiCall.sendGetRequest();
         }
 
