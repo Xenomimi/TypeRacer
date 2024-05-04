@@ -7,15 +7,19 @@
 }
 
 .text-default {
-    -fx-fill: black;
+    -fx-text-fill: black;
     -fx-background-color: transparent;
 }
 
+.underline .label {
+    -fx-underline: true;
+}
+
 .text-correct {
-    -fx-fill: green;
-    -fx-background-color: limegreen; /* lub inny kolor tła */
+    -fx-text-fill: green;
 }
 
 .text-error {
     -fx-text-fill: red; /* Kolor tekstu */
+    -fx-background-color: pink;
 }

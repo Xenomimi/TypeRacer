@@ -9,9 +9,11 @@ import com.almasb.fxgl.entity.Entity;
 import com.almasb.fxgl.scene.Scene;
 import com.almasb.fxgl.texture.Texture;
 import javafx.fxml.FXMLLoader;
+import javafx.scene.Node;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
@@ -22,17 +24,26 @@ import javafx.scene.text.TextFlow;
 import pl.wsiz.typeracerfx.ui.CustomMainMenu;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Objects;
 
 
 public class HelloApplication extends GameApplication {
 
     private TextFlow textFlow;
     private TextField textField;
+    private Text exp_letter;
+
     private Entity player;
     private double playerStartX;
     private double playerEndX;
+
     private String textToType;
     private int currentIndex = 0;
+    private int currentWordLetterIndex = 0;
+    private String currentWordStack;
+    private int currentWordIndex = 0;
+    private String[] wordsInTextToType;
 
     @Override
     protected void initSettings(GameSettings settings) {
@@ -73,23 +84,28 @@ public class HelloApplication extends GameApplication {
             Controller controller = loader.getController();
             textFlow = controller.getTextFlow();
             textField = controller.getTextField();
+            exp_letter = controller.getEx_letter();
 
-            // Dodaj elementy UI do sceny gry
-            FXGL.addUINode(root);  // Dodaje root do sceny FXGL, nie bezpośrednio do JavaFX Scene
-
+            // Dodaje root do sceny FXGL, nie bezpośrednio do JavaFX Scene
+            FXGL.addUINode(root);
 
             // Załaduj tekst do przepisania
             fillTextFlow();
 
             // Dodaj styl CSS
-            root.getStylesheets().add(getClass().getResource("/assets/ui/css/style.css").toExternalForm()); // Załaduj i dodaj CSS
+            root.getStylesheets().add(getClass().getResource("/assets/ui/css/style.css").toExternalForm());
 
             // Dodaj logikę dla pola tekstowego
             textField.textProperty().addListener((observable, oldValue, newValue) -> {
-                if (newValue.length() > oldValue.length()) {
+                if (newValue.length() < oldValue.length()) {
+                    // Tekst został skrócony, co oznacza użycie backspace
+                    handleBackspacePressed();
+                } else if (newValue.length() > oldValue.length()) {
+                    // Nowy znak został dodany
                     handleKeyPressed(newValue.charAt(oldValue.length()));
                 }
             });
+
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -106,59 +122,168 @@ public class HelloApplication extends GameApplication {
         movePlayer(progress);
     }
 
-    private void handleKeyPressed(char key) {
-        System.out.println("Naciśnięty klawisz: " + key);
-        if (currentIndex < textToType.length()) {
-            char expectedChar = textToType.charAt(currentIndex);
-            Text text = (Text) textFlow.getChildren().get(currentIndex);
-            Pane textContainer = (Pane) text.getParent(); // Pobranie kontenera zawierającego tekst
+    private void handleBackspacePressed() {
+        System.out.println("Backspace was pressed");
+        // Dodaj tutaj więcej logiki odpowiedniej dla twojej aplikacji
+    }
 
-            if (key == expectedChar) {
-                text.getStyleClass().clear(); // Usunięcie poprzednich stylów
-                text.getStyleClass().add("text-correct"); // Dodanie klasy CSS dla poprawnych odpowiedzi
-                currentIndex++;
-                checkWinCondition(); // Sprawdzenie, czy cały tekst został poprawnie przepisany
+    private void handleKeyPressed(char key) {
+        char expectedChar;
+        // Sprawdzenie, czy jesteśmy na końcu słowa (spacja) lub wewnątrz słowa
+        if (currentWordLetterIndex < wordsInTextToType[currentWordIndex].length()) {
+            expectedChar = wordsInTextToType[currentWordIndex].charAt(currentWordLetterIndex);
+        } else {
+            expectedChar = ' '; // Spacja na końcu słowa
+        }
+
+        // Obsługa wyświetlania oczekiwanego znaku
+        if (currentWordLetterIndex + 1 < wordsInTextToType[currentWordIndex].length()) {
+            // Jeszcze nie jesteśmy na końcu słowa, pobierz następną literę
+            exp_letter.setText(String.valueOf(wordsInTextToType[currentWordIndex].charAt(currentWordLetterIndex + 1)));
+        } else {
+            // Sprawdź, czy jesteśmy na ostatniej literze słowa
+            if (currentWordLetterIndex + 1 == wordsInTextToType[currentWordIndex].length()) {
+                // Ustaw spacje, jeśli jesteśmy na końcu słowa
+                exp_letter.setText("spacja");
             } else {
-                System.out.println("Błąd w porównaniu znaków!");
-                text.getStyleClass().clear();
-                text.getStyleClass().add("text-error"); // Możesz dodać stylizację dla błędów
+                // Sprawdź, czy to ostatnie słowo w tekście
+                if (currentWordIndex + 1 < wordsInTextToType.length) {
+                    // Przejdź do pierwszej litery następnego słowa
+                    exp_letter.setText(String.valueOf(wordsInTextToType[currentWordIndex + 1].charAt(0)));
+                } else {
+                    // Jeśli to już koniec tekstu
+                    exp_letter.setText("- Koniec tekstu -");
+                    textField.setDisable(true);
+                }
+            }
+        }
+
+        System.out.println("Naciśnięty klawisz: " + key);
+        System.out.println("Oczekiwany klawisz: " + expectedChar);
+        System.out.println("Słowo do napisania: " + wordsInTextToType[currentWordIndex]);
+
+        // Podkreślenie aktualnego słowa oraz aktualizacja poprzedniego jeżeli to możliwe
+        if (currentWordIndex > 0) {
+            // Podkreślenie aktualnego słowa
+            underlineWordInTextFlow(textFlow, currentWordIndex, true);
+            underlineWordInTextFlow(textFlow, currentWordIndex - 1, false);
+        } else {
+            underlineWordInTextFlow(textFlow, currentWordIndex, true);
+        }
+
+        // Sprawdzenie, czy naciśnięty klawisz jest zgodny z oczekiwanym
+        if (key == expectedChar) {
+            // Uzyskaj odpowiedni kontener dla bieżącego słowa
+            if (currentWordIndex * 2 < textFlow.getChildren().size()) {
+                HBox wordContainer = (HBox) textFlow.getChildren().get(currentWordIndex * 2); // *2 bo każde słowo ma po sobie Label z spacją
+
+                if (currentWordLetterIndex < wordsInTextToType[currentWordIndex].length()) {
+                    if (currentWordLetterIndex < wordContainer.getChildren().size()) {
+                        // Uzyskaj odpowiednią etykietę dla bieżącej litery
+                        Label correctLabel = (Label) wordContainer.getChildren().get(currentWordLetterIndex);
+                        correctLabel.getStyleClass().add("text-correct");
+                    }
+                }
             }
 
-            // Dodanie tła do kontenera zawierającego tekst
-            textContainer.setStyle("-fx-background-color: derive(" + (key == expectedChar ? "limegreen" : "red") + ", 80%);");
-            handleProgressUpdate();
+            // Aktualizacja indeksów
+            currentWordLetterIndex++;
+            if (currentWordLetterIndex > wordsInTextToType[currentWordIndex].length()) {
+                currentWordLetterIndex = 0;
+                currentWordIndex++;
+                if (currentWordIndex >= wordsInTextToType.length) {
+                    System.out.println("Koniec tekstu");
+                    // Tutaj można zresetować indeksy lub zakończyć ćwiczenie
+                }
+            }
+        } else {
+            System.out.println("Błąd w porównaniu znaków!");
+            if (currentWordIndex * 2 < textFlow.getChildren().size()) {
+                HBox wordContainer = (HBox) textFlow.getChildren().get(currentWordIndex * 2);
+                if (currentWordLetterIndex < wordContainer.getChildren().size()) {
+                    Label errorLabel = (Label) wordContainer.getChildren().get(currentWordLetterIndex);
+                    errorLabel.getStyleClass().clear();
+                    errorLabel.getStyleClass().add("text-error");
+                }
+            }
         }
     }
 
+    private boolean checkWordTyped() {
+        return Objects.equals(currentWordStack, wordsInTextToType[currentWordIndex]);
+    }
 
-    private void checkWinCondition() {
-        // Sprawdzenie czy samochód dotarł do końca planszy
+    // Zakładając, że funkcja checkWinCondition zwraca boolean
+    private boolean checkWinCondition() {
         if (currentIndex == textToType.length()) {
-            // Gracz wygrał
-            System.out.println("Wygrałeś!");
-            // Tutaj możesz dodać kod, który wykonuje się po wygranej grze
+            return true;
         }
+        return false;
     }
 
     private void fillTextFlow() {
+        // Losowanie odpowiednio długiego tekstu do przepisania
         ApiCall apiCall = new ApiCall();
-        String textToAdd = apiCall.sendGetRequest(); // Załóżmy, że ta metoda zwraca tekst do przepisania
-
+        String textToAdd = apiCall.sendGetRequest();
         while (textToAdd.length() < 150 || textToAdd.length() > 600) {
             textToAdd = apiCall.sendGetRequest();
         }
 
+        // Rozdzielenie tekstu na słowa
+        wordsInTextToType = textToAdd.split("\\s+");  // Dzieli tekst na słowa używając spacji jako separatora
+
+        // Przypisanie do zmiennej globalnej
         textToType = textToAdd;
         textFlow.getChildren().clear();
 
-        for (int i = 0; i < textToAdd.length(); i++) {
-            Text text = new Text(String.valueOf(textToAdd.charAt(i)));
-            text.getStyleClass().add("text-default"); // Przypisanie klasy CSS
-            text.setFont(Font.font("Arial", 25)); // Ustawienie czcionki i rozmiaru
-            textFlow.getChildren().add(text);
+        // Uzupełnienie pola TextFlow literami o odpowiednich klasach CSS
+        for (String word : wordsInTextToType) {
+            // Dla każdego słowa tworzymy osobny kontener (HBox), aby łatwiej było zarządzać stylem całego słowa
+            HBox wordContainer = new HBox();
+
+            for (int i = 0; i < word.length(); i++) {
+                Label label = new Label(String.valueOf(word.charAt(i)));
+                label.setFont(Font.font("Arial", 25));
+                wordContainer.getChildren().add(label);
+            }
+
+            // Dodanie spacji jako Label pomiędzy słowami, aby zachować odstępy
+            Label space = new Label(" ");
+            space.setFont(Font.font("Arial", 25));
+
+            // Dodawanie słowa do TextFlow
+            textFlow.getChildren().add(wordContainer);
+            textFlow.getChildren().add(space);
         }
+        underlineWordInTextFlow(textFlow, currentWordIndex, true);
     }
 
+    public void underlineWordInTextFlow(TextFlow textFlow, int wordIndex, boolean underline) {
+        int currentWordIndex = 0; // Licznik do śledzenia indeksu słów
+
+        // Iteracja przez wszystkie dzieci TextFlow
+        for (Node node : textFlow.getChildren()) {
+            if (node instanceof Label) {
+                continue;
+            } else if (node instanceof HBox) {
+                // Sprawdzamy, czy bieżący HBox to ten, który zawiera słowo do podkreślenia
+                if (currentWordIndex == wordIndex) {
+                    HBox wordContainer = (HBox) node;
+
+                    // Ustawienie lub usunięcie klasy podkreślającej w zależności od parametru underline
+                    if (underline) {
+                        if (!wordContainer.getStyleClass().contains("underline")) {
+                            wordContainer.getStyleClass().add("underline");
+                        }
+                    } else {
+                        wordContainer.getStyleClass().remove("underline");
+                    }
+                    break; // Zakończenie pętli po znalezieniu i podkreśleniu odpowiedniego słowa
+                }
+                currentWordIndex++; // Inkrementacja licznika słów
+            }
+        }
+    }
 
     public static void main(String[] args) {
         launch(args);
