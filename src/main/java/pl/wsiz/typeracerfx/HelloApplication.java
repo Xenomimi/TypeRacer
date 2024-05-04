@@ -35,8 +35,6 @@ public class HelloApplication extends GameApplication {
     private Text exp_letter;
 
     private Entity player;
-    private double playerStartX;
-    private double playerEndX;
 
     private String textToType;
     private int currentIndex = 0;
@@ -68,9 +66,6 @@ public class HelloApplication extends GameApplication {
                 .at(50, 300)
                 .view(playerTexture) // Ustaw teksturę gracza
                 .buildAndAttach(); // Dodaj gracza do sceny
-
-        playerStartX = player.getX();
-        playerEndX = player.getWidth() - 50;
     }
 
     @Override
@@ -113,12 +108,13 @@ public class HelloApplication extends GameApplication {
     }
 
     private void movePlayer(double progress) {
-        double newX = playerStartX + (progress * (playerEndX - playerStartX));
+        double newX = 100 + (progress * 1000);
         player.setX(newX);
     }
 
     private void handleProgressUpdate() {
-        double progress = (double) currentIndex / textToType.length();
+        double progress = (double) currentWordIndex / wordsInTextToType.length;
+        System.out.println(progress);
         movePlayer(progress);
     }
 
@@ -207,18 +203,7 @@ public class HelloApplication extends GameApplication {
                 }
             }
         }
-    }
-
-    private boolean checkWordTyped() {
-        return Objects.equals(currentWordStack, wordsInTextToType[currentWordIndex]);
-    }
-
-    // Zakładając, że funkcja checkWinCondition zwraca boolean
-    private boolean checkWinCondition() {
-        if (currentIndex == textToType.length()) {
-            return true;
-        }
-        return false;
+        handleProgressUpdate();
     }
 
     private void fillTextFlow() {
