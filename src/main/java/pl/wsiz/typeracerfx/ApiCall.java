@@ -49,7 +49,12 @@ public class ApiCall {
 
                 finalText = finalText.replace("  ", " ");
 
-                System.out.println("\u001B[31mCzerwony tekst\u001B[0m");
+                finalText = finalText.replace("…", "...");
+
+                finalText = finalText.replace("„", "\"");
+
+                finalText = finalText.replace("”", "\"");
+
                 System.out.println(finalText);
 
             } else {

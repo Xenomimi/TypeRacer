@@ -1,0 +1,21 @@
+.button-style {
+    -fx-padding: 10px 20px;
+    -fx-font-size: 16px;
+    -fx-background-color: #ff6347; /* Tomato */
+    -fx-text-fill: white;
+    -fx-background-radius: 10;
+}
+
+.text-default {
+    -fx-fill: black;
+    -fx-background-color: transparent;
+}
+
+.text-correct {
+    -fx-fill: green;
+    -fx-background-color: limegreen; /* lub inny kolor tła */
+}
+
+.text-error {
+    -fx-text-fill: red; /* Kolor tekstu */
+}

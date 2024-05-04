@@ -5,9 +5,15 @@ import com.almasb.fxgl.app.GameSettings;
 import com.almasb.fxgl.app.scene.FXGLMenu;
 import com.almasb.fxgl.app.scene.SceneFactory;
 import com.almasb.fxgl.dsl.FXGL;
+import com.almasb.fxgl.entity.Entity;
+import com.almasb.fxgl.scene.Scene;
+import com.almasb.fxgl.texture.Texture;
 import javafx.fxml.FXMLLoader;
+import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.Pane;
+import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
@@ -22,7 +28,9 @@ public class HelloApplication extends GameApplication {
 
     private TextFlow textFlow;
     private TextField textField;
-    private Rectangle car;
+    private Entity player;
+    private double playerStartX;
+    private double playerEndX;
     private String textToType;
     private int currentIndex = 0;
 
@@ -42,58 +50,86 @@ public class HelloApplication extends GameApplication {
         });
     }
 
+    @Override
+    protected void initGame() {
+        Texture playerTexture = FXGL.texture("black_car.png"); // Załaduj teksturę gracza
+        player = FXGL.entityBuilder()
+                .at(50, 300)
+                .view(playerTexture) // Ustaw teksturę gracza
+                .buildAndAttach(); // Dodaj gracza do sceny
+
+        playerStartX = player.getX();
+        playerEndX = player.getWidth() - 50;
+    }
 
     @Override
     protected void initUI() {
         try {
             // Load UI from FXML file
             FXMLLoader loader = new FXMLLoader(getClass().getResource("hello-view.fxml"));
-            AnchorPane root = loader.load();
+            AnchorPane root = loader.load();  // Załaduj główny layout z FXML
 
-            // Get the controller
+            // Pobierz kontroler
             Controller controller = loader.getController();
             textFlow = controller.getTextFlow();
-            textField = controller.getTextField(); // Zainicjuj pole textField
+            textField = controller.getTextField();
 
-            // Initialize the car
-            car = new Rectangle(40, 20, Color.RED);
-            car.setTranslateY(100);
-            car.setTranslateX(50);
+            // Dodaj elementy UI do sceny gry
+            FXGL.addUINode(root);  // Dodaje root do sceny FXGL, nie bezpośrednio do JavaFX Scene
 
-            // Add UI nodes to the game scene
-            FXGL.addUINode(root);
-            FXGL.addUINode(car);
 
-            // Load text to type
+            // Załaduj tekst do przepisania
             fillTextFlow();
 
-            // Kolorowanie tekstu
+            // Dodaj styl CSS
+            root.getStylesheets().add(getClass().getResource("/assets/ui/css/style.css").toExternalForm()); // Załaduj i dodaj CSS
+
+            // Dodaj logikę dla pola tekstowego
             textField.textProperty().addListener((observable, oldValue, newValue) -> {
                 if (newValue.length() > oldValue.length()) {
                     handleKeyPressed(newValue.charAt(oldValue.length()));
                 }
             });
 
-            // Check if typed text matches
-
-
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
+    private void movePlayer(double progress) {
+        double newX = playerStartX + (progress * (playerEndX - playerStartX));
+        player.setX(newX);
+    }
+
+    private void handleProgressUpdate() {
+        double progress = (double) currentIndex / textToType.length();
+        movePlayer(progress);
+    }
+
     private void handleKeyPressed(char key) {
+        System.out.println("Naciśnięty klawisz: " + key);
         if (currentIndex < textToType.length()) {
             char expectedChar = textToType.charAt(currentIndex);
+            Text text = (Text) textFlow.getChildren().get(currentIndex);
+            Pane textContainer = (Pane) text.getParent(); // Pobranie kontenera zawierającego tekst
+
             if (key == expectedChar) {
-                // Color the correct letter green
-                Text text = (Text) textFlow.getChildren().get(currentIndex);
-                text.setFill(Color.GREEN);
+                text.getStyleClass().clear(); // Usunięcie poprzednich stylów
+                text.getStyleClass().add("text-correct"); // Dodanie klasy CSS dla poprawnych odpowiedzi
                 currentIndex++;
-                checkWinCondition();
+                checkWinCondition(); // Sprawdzenie, czy cały tekst został poprawnie przepisany
+            } else {
+                System.out.println("Błąd w porównaniu znaków!");
+                text.getStyleClass().clear();
+                text.getStyleClass().add("text-error"); // Możesz dodać stylizację dla błędów
             }
+
+            // Dodanie tła do kontenera zawierającego tekst
+            textContainer.setStyle("-fx-background-color: derive(" + (key == expectedChar ? "limegreen" : "red") + ", 80%);");
+            handleProgressUpdate();
         }
     }
+
 
     private void checkWinCondition() {
         // Sprawdzenie czy samochód dotarł do końca planszy
@@ -106,24 +142,23 @@ public class HelloApplication extends GameApplication {
 
     private void fillTextFlow() {
         ApiCall apiCall = new ApiCall();
-        String textToAdd = apiCall.sendGetRequest();
+        String textToAdd = apiCall.sendGetRequest(); // Załóżmy, że ta metoda zwraca tekst do przepisania
 
-        // Dopóki tekst jest zbyt krótki lub zbyt długi, losuj ponownie
         while (textToAdd.length() < 150 || textToAdd.length() > 600) {
             textToAdd = apiCall.sendGetRequest();
         }
 
         textToType = textToAdd;
-
         textFlow.getChildren().clear();
 
         for (int i = 0; i < textToAdd.length(); i++) {
             Text text = new Text(String.valueOf(textToAdd.charAt(i)));
-            text.setFill(Color.BLACK);
+            text.getStyleClass().add("text-default"); // Przypisanie klasy CSS
             text.setFont(Font.font("Arial", 25)); // Ustawienie czcionki i rozmiaru
             textFlow.getChildren().add(text);
         }
     }
+
 
     public static void main(String[] args) {
         launch(args);
