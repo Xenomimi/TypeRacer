@@ -55,6 +55,8 @@ public class ApiCall {
 
                 finalText = finalText.replace("”", "\"");
 
+                finalText = finalText.replace("–", "-");
+
                 System.out.println(finalText);
 
             } else {

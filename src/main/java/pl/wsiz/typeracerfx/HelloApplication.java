@@ -38,7 +38,7 @@ public class HelloApplication extends GameApplication {
     private Text time;
     private boolean uiInitialized = false;
     private Entity player;
-    private double timeLeft = 5; // czas w sekundach, 2 minuty to 120 sekund
+    private double timeLeft = 120; // czas w sekundach, 2 minuty to 120 sekund
 
     private String textToType;
     private int currentIndex = 0;
