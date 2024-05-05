@@ -24,6 +24,7 @@ import javafx.scene.text.TextFlow;
 import pl.wsiz.typeracerfx.ui.CustomMainMenu;
 
 import java.io.IOException;
+import javafx.util.Duration;
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -34,7 +35,10 @@ public class HelloApplication extends GameApplication {
     private TextField textField;
     private Text exp_letter;
 
+    private Text time;
+    private boolean uiInitialized = false;
     private Entity player;
+    private double timeLeft = 5; // czas w sekundach, 2 minuty to 120 sekund
 
     private String textToType;
     private int currentIndex = 0;
@@ -61,11 +65,11 @@ public class HelloApplication extends GameApplication {
 
     @Override
     protected void initGame() {
-        Texture playerTexture = FXGL.texture("black_car.png"); // Załaduj teksturę gracza
+        Texture playerTexture = FXGL.texture("black_car.png");
         player = FXGL.entityBuilder()
                 .at(50, 300)
-                .view(playerTexture) // Ustaw teksturę gracza
-                .buildAndAttach(); // Dodaj gracza do sceny
+                .view(playerTexture)
+                .buildAndAttach();
     }
 
     @Override
@@ -80,7 +84,23 @@ public class HelloApplication extends GameApplication {
             textFlow = controller.getTextFlow();
             textField = controller.getTextField();
             exp_letter = controller.getEx_letter();
+            time = controller.getTime();
 
+            // Uruchamia timer dopiero po zainicjalizowaniu UI
+            FXGL.run(() -> {
+                timeLeft--;
+                updateDisplayedTime();
+
+                if (timeLeft <= 0) {
+                    FXGL.getGameTimer().clear();
+                    FXGL.getDialogService().showMessageBox("Czas się skończył!", () -> {
+                        // Przejście do menu głównego
+                        FXGL.getGameController().gotoMainMenu();
+                    });
+                }
+            }, Duration.seconds(1));
+
+            updateDisplayedTime(); // Pierwsze aktualizowanie wyświetlacza czasu
             // Dodaje root do sceny FXGL, nie bezpośrednio do JavaFX Scene
             FXGL.addUINode(root);
 
@@ -103,6 +123,7 @@ public class HelloApplication extends GameApplication {
 
 
         } catch (IOException e) {
+            System.out.println("Failed to load FXML file.");
             e.printStackTrace();
         }
     }
@@ -121,6 +142,15 @@ public class HelloApplication extends GameApplication {
     private void handleBackspacePressed() {
         System.out.println("Backspace was pressed");
         // Dodaj tutaj więcej logiki odpowiedniej dla twojej aplikacji
+    }
+
+    private void updateDisplayedTime() {
+        // Konwersja sekund na format MM:SS
+        int minutes = (int) timeLeft / 60;
+        int seconds = (int) timeLeft % 60;
+
+        String timeText = String.format("%02d:%02d", minutes, seconds);
+        time.setText(timeText);
     }
 
     private void handleKeyPressed(char key) {

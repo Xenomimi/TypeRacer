@@ -24,5 +24,25 @@
             <Font size="40.0" />
          </font>
       </Text>
+      <Text layoutX="56.0" layoutY="36.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Czas:">
+         <font>
+            <Font size="20.0" />
+         </font>
+      </Text>
+      <Text fx:id="time" layoutX="116.0" layoutY="36.0" strokeType="OUTSIDE" strokeWidth="0.0">
+         <font>
+            <Font size="20.0" />
+         </font>
+      </Text>
+      <Text layoutX="56.0" layoutY="72.0" strokeType="OUTSIDE" strokeWidth="0.0" text="WPM:">
+         <font>
+            <Font size="20.0" />
+         </font>
+      </Text>
+      <Text fx:id="wpm" layoutX="116.0" layoutY="72.0" strokeType="OUTSIDE" strokeWidth="0.0">
+         <font>
+            <Font size="20.0" />
+         </font>
+      </Text>
    </children>
 </AnchorPane>

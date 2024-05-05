@@ -15,6 +15,9 @@ public class Controller {
     private Text ex_letter;
 
     @FXML
+    private Text time;
+
+    @FXML
     private TextField textField;
 
     @FXML
@@ -33,5 +36,7 @@ public class Controller {
     }
 
     public Text getEx_letter() { return ex_letter; }
+
+    public Text getTime() { return time; }
 
 }
