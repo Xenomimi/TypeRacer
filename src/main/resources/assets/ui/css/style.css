@@ -1,9 +1,27 @@
 .button-style {
     -fx-padding: 10px 20px;
     -fx-font-size: 16px;
-    -fx-background-color: #ff6347; /* Tomato */
-    -fx-text-fill: white;
+    -fx-background-color: rgba(255, 255, 255, 0.2); /* Transparent white */
+    -fx-background-insets: 0, 1; /* To apply border effect */
     -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-border-color: rgba(255, 255, 255, 0.3); /* Semi-transparent white for border */
+    -fx-border-width: 1px;
+    -fx-text-fill: white;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.15), 10, 0.2, 0, 1); /* Light shadow */
+    -fx-cursor: hand; /* Pointer cursor on hover */
+    -fx-transition: all 0.3s ease; /* Smooth transition for hover effect */
+}
+
+.button-style:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.3); /* Slightly more opaque on hover */
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 15, 0.3, 0, 2); /* Stronger shadow on hover */
+}
+
+.button-style:pressed {
+    -fx-background-color: rgba(255, 255, 255, 0.2); /* Original transparent white on click */
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.1), 5, 0.1, 0, 1); /* Subtle shadow on click */
+    -fx-translate-y: 2px; /* Slight movement down on click to simulate pressing */
 }
 
 .text-default {

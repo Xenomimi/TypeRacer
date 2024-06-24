@@ -27,13 +27,18 @@ public class CustomMainMenu extends FXGLMenu {
 
 
         // Create buttons
-        FXGLButton btnStart = new FXGLButton("START");
+        FXGLButton btnMulti = new FXGLButton("MULTIPLAYER");
+        FXGLButton btnStart = new FXGLButton("TRAINING");
         FXGLButton btnSettings = new FXGLButton("SETTINGS");
         FXGLButton btnExit = new FXGLButton("EXIT");
 
         btnStart.getStyleClass().add("button-style");
+        btnMulti.getStyleClass().add("button-style");
+        btnSettings.getStyleClass().add("button-style");
+        btnExit.getStyleClass().add("button-style");
 
         // Set button actions
+        btnMulti.setOnAction(e -> gotoMultiplayerMenu());
         btnStart.setOnAction(e -> fireNewGame());
         btnExit.setOnAction(e -> FXGL.getGameController().exit());
         btnSettings.setOnAction(e -> gotoSettingsMenu());  // Updated action for settings
@@ -44,7 +49,7 @@ public class CustomMainMenu extends FXGLMenu {
         title.setFont(FXGL.getUIFactoryService().newFont(48));
 
         // Layout
-        menuBox = new VBox(10, title, btnStart, btnSettings, btnExit);  // Added btnSettings to the layout
+        menuBox = new VBox(10, title, btnMulti, btnStart, btnSettings, btnExit);  // Added btnSettings to the layout
         menuBox.setAlignment(Pos.CENTER); // Center alignment
 
         getContentRoot().getChildren().add(menuBox);
@@ -64,5 +69,10 @@ public class CustomMainMenu extends FXGLMenu {
     private void gotoSettingsMenu() {
         FXGL.getSceneService().popSubScene();
         FXGL.getSceneService().pushSubScene(new SettingsMenu());
+    }
+
+    private void gotoMultiplayerMenu() {
+        FXGL.getSceneService().popSubScene();
+        FXGL.getSceneService().pushSubScene(new MultiplayerMenu());
     }
 }

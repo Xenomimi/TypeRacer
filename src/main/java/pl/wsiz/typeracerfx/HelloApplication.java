@@ -6,8 +6,11 @@ import com.almasb.fxgl.app.scene.FXGLMenu;
 import com.almasb.fxgl.app.scene.SceneFactory;
 import com.almasb.fxgl.dsl.FXGL;
 import com.almasb.fxgl.entity.Entity;
+import com.almasb.fxgl.multiplayer.MultiplayerService;
 import com.almasb.fxgl.scene.Scene;
 import com.almasb.fxgl.texture.Texture;
+import com.almasb.fxgl.ui.DialogFactoryService;
+import com.almasb.fxgl.ui.DialogService;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
@@ -27,6 +30,10 @@ import java.io.IOException;
 import javafx.util.Duration;
 import java.util.Arrays;
 import java.util.Objects;
+import javafx.application.Platform;
+
+import static com.almasb.fxgl.dsl.FXGLForKtKt.getGameWorld;
+import static com.almasb.fxgl.dsl.FXGLForKtKt.spawn;
 
 
 public class HelloApplication extends GameApplication {
@@ -38,7 +45,7 @@ public class HelloApplication extends GameApplication {
     private Text time;
     private boolean uiInitialized = false;
     private Entity player;
-    private double timeLeft = 120; // czas w sekundach, 2 minuty to 120 sekund
+    private double timeLeft = 120;
 
     private String textToType;
     private int currentIndex = 0;
@@ -65,11 +72,8 @@ public class HelloApplication extends GameApplication {
 
     @Override
     protected void initGame() {
-        Texture playerTexture = FXGL.texture("black_car.png");
-        player = FXGL.entityBuilder()
-                .at(50, 300)
-                .view(playerTexture)
-                .buildAndAttach();
+        getGameWorld().addEntityFactory(new MyPlayerFactory());
+        player = spawn("player");
     }
 
     @Override
@@ -135,7 +139,6 @@ public class HelloApplication extends GameApplication {
 
     private void handleProgressUpdate() {
         double progress = (double) currentWordIndex / wordsInTextToType.length;
-        System.out.println(progress);
         movePlayer(progress);
     }
 
@@ -154,86 +157,73 @@ public class HelloApplication extends GameApplication {
     }
 
     private void handleKeyPressed(char key) {
-        char expectedChar;
-        // Sprawdzenie, czy jesteśmy na końcu słowa (spacja) lub wewnątrz słowa
-        if (currentWordLetterIndex < wordsInTextToType[currentWordIndex].length()) {
-            expectedChar = wordsInTextToType[currentWordIndex].charAt(currentWordLetterIndex);
-        } else {
-            expectedChar = ' '; // Spacja na końcu słowa
+        if (currentWordIndex >= wordsInTextToType.length) {
+            System.out.println("Koniec tekstu");
+            textField.setDisable(true);
+            return;
         }
 
-        // Obsługa wyświetlania oczekiwanego znaku
-        if (currentWordLetterIndex + 1 < wordsInTextToType[currentWordIndex].length()) {
-            // Jeszcze nie jesteśmy na końcu słowa, pobierz następną literę
-            exp_letter.setText(String.valueOf(wordsInTextToType[currentWordIndex].charAt(currentWordLetterIndex + 1)));
-        } else {
-            // Sprawdź, czy jesteśmy na ostatniej literze słowa
-            if (currentWordLetterIndex + 1 == wordsInTextToType[currentWordIndex].length()) {
-                // Ustaw spacje, jeśli jesteśmy na końcu słowa
-                exp_letter.setText("spacja");
-            } else {
-                // Sprawdź, czy to ostatnie słowo w tekście
-                if (currentWordIndex + 1 < wordsInTextToType.length) {
-                    // Przejdź do pierwszej litery następnego słowa
-                    exp_letter.setText(String.valueOf(wordsInTextToType[currentWordIndex + 1].charAt(0)));
-                } else {
-                    // Jeśli to już koniec tekstu
-                    exp_letter.setText("- Koniec tekstu -");
-                    textField.setDisable(true);
-                }
-            }
-        }
+        String currentWord = wordsInTextToType[currentWordIndex];
+        char expectedChar = currentWordLetterIndex < currentWord.length() ? currentWord.charAt(currentWordLetterIndex) : ' ';
 
-        System.out.println("Naciśnięty klawisz: " + key);
-        System.out.println("Oczekiwany klawisz: " + expectedChar);
-        System.out.println("Słowo do napisania: " + wordsInTextToType[currentWordIndex]);
+        // Update expected letter display
+        updateExpectedLetterDisplay();
 
-        // Podkreślenie aktualnego słowa oraz aktualizacja poprzedniego jeżeli to możliwe
-        if (currentWordIndex > 0) {
-            // Podkreślenie aktualnego słowa
-            underlineWordInTextFlow(textFlow, currentWordIndex, true);
-            underlineWordInTextFlow(textFlow, currentWordIndex - 1, false);
-        } else {
-            underlineWordInTextFlow(textFlow, currentWordIndex, true);
-        }
+        // Get the container for the current word
+        HBox wordContainer = (HBox) textFlow.getChildren().get(currentWordIndex * 2);
 
-        // Sprawdzenie, czy naciśnięty klawisz jest zgodny z oczekiwanym
         if (key == expectedChar) {
-            // Uzyskaj odpowiedni kontener dla bieżącego słowa
-            if (currentWordIndex * 2 < textFlow.getChildren().size()) {
-                HBox wordContainer = (HBox) textFlow.getChildren().get(currentWordIndex * 2); // *2 bo każde słowo ma po sobie Label z spacją
-
-                if (currentWordLetterIndex < wordsInTextToType[currentWordIndex].length()) {
-                    if (currentWordLetterIndex < wordContainer.getChildren().size()) {
-                        // Uzyskaj odpowiednią etykietę dla bieżącej litery
-                        Label correctLabel = (Label) wordContainer.getChildren().get(currentWordLetterIndex);
-                        correctLabel.getStyleClass().add("text-correct");
-                    }
-                }
+            // Correct key pressed
+            if (currentWordLetterIndex < currentWord.length()) {
+                Label correctLabel = (Label) wordContainer.getChildren().get(currentWordLetterIndex);
+                correctLabel.getStyleClass().clear();
+                correctLabel.getStyleClass().add("text-correct");
             }
 
-            // Aktualizacja indeksów
             currentWordLetterIndex++;
-            if (currentWordLetterIndex > wordsInTextToType[currentWordIndex].length()) {
-                currentWordLetterIndex = 0;
+
+            // Move to next word if current word is completed
+            if (currentWordLetterIndex > currentWord.length()) {
                 currentWordIndex++;
-                if (currentWordIndex >= wordsInTextToType.length) {
-                    System.out.println("Koniec tekstu");
-                    // Tutaj można zresetować indeksy lub zakończyć ćwiczenie
+                currentWordLetterIndex = 0;
+                underlineWordInTextFlow(textFlow, currentWordIndex - 1, false);
+                if (currentWordIndex < wordsInTextToType.length) {
+                    underlineWordInTextFlow(textFlow, currentWordIndex, true);
                 }
+
+                // Clear the TextField after completing a word
+                Platform.runLater(() -> {
+                    textField.clear();
+                    textField.setText("");
+                });
             }
         } else {
-            System.out.println("Błąd w porównaniu znaków!");
-            if (currentWordIndex * 2 < textFlow.getChildren().size()) {
-                HBox wordContainer = (HBox) textFlow.getChildren().get(currentWordIndex * 2);
-                if (currentWordLetterIndex < wordContainer.getChildren().size()) {
-                    Label errorLabel = (Label) wordContainer.getChildren().get(currentWordLetterIndex);
-                    errorLabel.getStyleClass().clear();
-                    errorLabel.getStyleClass().add("text-error");
-                }
+            // Incorrect key pressed
+            if (currentWordLetterIndex < currentWord.length()) {
+                Label errorLabel = (Label) wordContainer.getChildren().get(currentWordLetterIndex);
+                errorLabel.getStyleClass().clear();
+                errorLabel.getStyleClass().add("text-error");
             }
+            // Do not increment currentWordLetterIndex for incorrect input
         }
+
         handleProgressUpdate();
+    }
+
+    private void updateExpectedLetterDisplay() {
+        if (currentWordIndex >= wordsInTextToType.length) {
+            exp_letter.setText("- Koniec tekstu -");
+            return;
+        }
+
+        String currentWord = wordsInTextToType[currentWordIndex];
+        if (currentWordLetterIndex < currentWord.length()) {
+            exp_letter.setText(String.valueOf(currentWord.charAt(currentWordLetterIndex)));
+        } else if (currentWordIndex + 1 < wordsInTextToType.length) {
+            exp_letter.setText("spacja");
+        } else {
+            exp_letter.setText("- Koniec tekstu -");
+        }
     }
 
     private void fillTextFlow() {
