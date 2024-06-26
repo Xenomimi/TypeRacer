@@ -15,6 +15,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
+import pl.wsiz.typeracerfx.HelloApplication;
 
 import static com.almasb.fxgl.dsl.FXGLForKtKt.*;
 
@@ -32,7 +33,6 @@ public class MultiplayerMenu extends FXGLMenu {
         getContentRoot().getChildren().add(background);
         getContentRoot().getStylesheets().add(getClass().getResource("/assets/ui/css/style.css").toExternalForm());
 
-
         // Create buttons
         FXGLButton btnCreate = new FXGLButton("Create game");
         FXGLButton btnJoin = new FXGLButton("Join game");
@@ -44,57 +44,52 @@ public class MultiplayerMenu extends FXGLMenu {
         btnBack.getStyleClass().add("button-style");
 
         // Set button actions
-        btnCreate.setOnAction(e -> fireNewGame());
-
-        // Create Dialog
+        btnCreate.setOnAction(e -> {
+            HelloApplication gameApp = (HelloApplication) getApp();
+            gameApp.setMyFlag(true);
+            fireNewGame();
+        });
 
         TextField inputField = new TextField();
-        inputField.setPromptText("Enter your input here");
+        inputField.setPromptText("Enter game code");
 
         Button btnJoinGame = getUIFactoryService().newButton("Join");
         Button btnGoBack = getUIFactoryService().newButton("Back");
 
-        btnJoinGame.setCenterShape(true);
-
-        VBox content = new VBox(
-                getUIFactoryService().newText("Please enter GAME CODE and click Join button to enter the multiplayer game."),
+        VBox content = new VBox(10,
+                getUIFactoryService().newText("Enter GAME CODE to join:"),
                 inputField,
                 btnJoinGame,
                 btnGoBack
         );
-
-        content.setAlignment(Pos.CENTER); // Center align all contents vertically
-        content.setSpacing(10); // Spacing between nodes
+        content.setAlignment(Pos.CENTER);
 
         btnJoinGame.setOnAction(e -> {
-            System.out.println("Trying to join the game");
-        });;
+            if (!inputField.getText().isEmpty()) {
+                HelloApplication gameApp = (HelloApplication) getApp();
+                gameApp.setMyFlag(false);
+                fireNewGame();
+            }
+        });
 
         btnJoin.setOnAction(e ->
-                FXGL.getDialogService().showBox("This is a customizable box", content, btnGoBack)
+                FXGL.getDialogService().showBox("Join Game", content, btnGoBack)
         );
-        btnBack.setOnAction(e -> gotoMainMenu());  // Updated action for settings
 
-        // Styling for demonstration
+        btnBack.setOnAction(e -> gotoMainMenu());
+
         Text title = new Text("Multiplayer");
         title.setFill(Color.WHITE);
         title.setFont(FXGL.getUIFactoryService().newFont(48));
 
-        // Layout
         menuBox = new VBox(10, title, btnCreate, btnJoin, btnBack);
         menuBox.setAlignment(Pos.CENTER);
 
         getContentRoot().getChildren().add(menuBox);
 
-        // Center the menu after the scene has been rendered
-        Platform.runLater(() -> {
-            menuBox.layoutBoundsProperty().addListener((observable, oldValue, newValue) -> {
-                double width = newValue.getWidth();
-                double height = newValue.getHeight();
-
-                menuBox.setTranslateX((FXGL.getAppWidth() - width) / 2);
-                menuBox.setTranslateY((FXGL.getAppHeight() - height) / 2);
-            });
+        menuBox.layoutBoundsProperty().addListener((observable, oldValue, newValue) -> {
+            menuBox.setTranslateX((FXGL.getAppWidth() - newValue.getWidth()) / 2);
+            menuBox.setTranslateY((FXGL.getAppHeight() - newValue.getHeight()) / 2);
         });
     }
 

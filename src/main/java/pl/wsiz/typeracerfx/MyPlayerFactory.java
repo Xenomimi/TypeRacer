@@ -5,18 +5,16 @@ import com.almasb.fxgl.entity.Entity;
 import com.almasb.fxgl.entity.EntityFactory;
 import com.almasb.fxgl.entity.SpawnData;
 import com.almasb.fxgl.entity.Spawns;
+import com.almasb.fxgl.multiplayer.NetworkComponent;
 import com.almasb.fxgl.texture.Texture;
 
 public class MyPlayerFactory implements EntityFactory {
-
-    Texture playerTexture = FXGL.texture("black_car.png");
-
     @Spawns("player")
     public Entity newPlayer(SpawnData data) {
-        return FXGL.entityBuilder(data)
-                .type(PlayerType.PLAYER)
-                .at(50, 300)
-                .view(playerTexture)
+        System.out.println("Creating new player entity at position: " + data.getX() + ", " + data.getY());
+        return FXGL.entityBuilder()
+                .at(data.getX(), data.getY())
+                .viewWithBBox("black_car.png")  // Make sure this asset exists
                 .buildAndAttach();
     }
 }

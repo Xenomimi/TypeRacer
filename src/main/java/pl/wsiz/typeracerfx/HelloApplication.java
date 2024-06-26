@@ -4,9 +4,14 @@ import com.almasb.fxgl.app.GameApplication;
 import com.almasb.fxgl.app.GameSettings;
 import com.almasb.fxgl.app.scene.FXGLMenu;
 import com.almasb.fxgl.app.scene.SceneFactory;
+import com.almasb.fxgl.core.math.FXGLMath;
+import com.almasb.fxgl.core.serialization.Bundle;
 import com.almasb.fxgl.dsl.FXGL;
 import com.almasb.fxgl.entity.Entity;
+import com.almasb.fxgl.entity.EntityFactory;
 import com.almasb.fxgl.multiplayer.MultiplayerService;
+import com.almasb.fxgl.net.Connection;
+import com.almasb.fxgl.net.Server;
 import com.almasb.fxgl.scene.Scene;
 import com.almasb.fxgl.texture.Texture;
 import com.almasb.fxgl.ui.DialogFactoryService;
@@ -27,13 +32,16 @@ import javafx.scene.text.TextFlow;
 import pl.wsiz.typeracerfx.ui.CustomMainMenu;
 
 import java.io.IOException;
+
 import javafx.util.Duration;
+
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.Optional;
+
 import javafx.application.Platform;
 
-import static com.almasb.fxgl.dsl.FXGLForKtKt.getGameWorld;
-import static com.almasb.fxgl.dsl.FXGLForKtKt.spawn;
+import static com.almasb.fxgl.dsl.FXGLForKtKt.*;
 
 
 public class HelloApplication extends GameApplication {
@@ -41,18 +49,24 @@ public class HelloApplication extends GameApplication {
     private TextFlow textFlow;
     private TextField textField;
     private Text exp_letter;
-
     private Text time;
     private boolean uiInitialized = false;
     private Entity player;
+    private Entity player1;
     private double timeLeft = 120;
 
     private String textToType;
     private int currentIndex = 0;
     private int currentWordLetterIndex = 0;
-    private String currentWordStack;
     private int currentWordIndex = 0;
     private String[] wordsInTextToType;
+
+    private Server<Bundle> server;
+    private Optional<Connection<Bundle>> clientConnection = Optional.empty();
+    private boolean isServer = true;
+    private boolean isTraining = false;
+    private Connection<Bundle> connection;
+
 
     @Override
     protected void initSettings(GameSettings settings) {
@@ -62,18 +76,96 @@ public class HelloApplication extends GameApplication {
         settings.setVersion("0.1");
         settings.setAppIcon("icon.png");
         settings.setMainMenuEnabled(true);
+        settings.addEngineService(MultiplayerService.class);
         settings.setSceneFactory(new SceneFactory() {
             @Override
             public FXGLMenu newMainMenu() {
                 return new CustomMainMenu();
             }
         });
+        System.out.println("Settings initialized. isServer: " + isServer + ", isTraining: " + isTraining);
     }
 
     @Override
     protected void initGame() {
-        getGameWorld().addEntityFactory(new MyPlayerFactory());
-        player = spawn("player");
+        System.out.println("Initializing game. isServer: " + isServer + ", isTraining: " + isTraining);
+
+        FXGL.getGameWorld().addEntityFactory(new MyPlayerFactory());
+        System.out.println("EntityFactory added to GameWorld");
+
+        FXGL.runOnce(() -> {
+            System.out.println("Running initialization. isServer: " + isServer + ", isTraining: " + isTraining);
+            if (isTraining) {
+                System.out.println("Initializing training mode");
+                spawnPlayer();
+                isTraining = false;
+            } else if (isServer) {
+                System.out.println("Initializing server");
+                initServer();
+                spawnPlayer();  // Spawn player immediately for server
+            } else {
+                System.out.println("Initializing client");
+                initClient();
+            }
+        }, Duration.seconds(0.2));
+    }
+
+    private void spawnPlayer() {
+        System.out.println("Attempting to spawn player");
+        player = FXGL.spawn("player", 100, 100);
+        if (player != null) {
+            System.out.println("Player spawned successfully. Position: " + player.getPosition());
+        } else {
+            System.out.println("Failed to spawn player!");
+        }
+    }
+
+
+    private void initServer() {
+        System.out.println("Setting up server");
+        server = FXGL.getNetService().newTCPServer(55555);
+
+        server.setOnConnected(conn -> {
+            System.out.println("Client connected to server");
+            conn.addMessageHandlerFX((connection, message) -> {
+                System.out.println("Server received message: " + message.getName());
+                if (message.getName().equals("progressData")) {
+                    double progress = message.get("progress");
+                    movePlayer1(progress);
+
+                    // Broadcast the progress to all clients
+                    server.broadcast(message);
+                }
+            });
+
+            // Notify the client that the server is ready
+            Bundle readyBundle = new Bundle("serverReady");
+            conn.send(readyBundle);
+            System.out.println("Server sent 'serverReady' message to client");
+        });
+        server.startAsync();
+        System.out.println("Server started asynchronously");
+    }
+
+    private void initClient() {
+        System.out.println("Setting up client");
+        var client = FXGL.getNetService().newTCPClient("localhost", 55555);
+        client.setOnConnected(conn -> {
+            System.out.println("Client connected to server");
+            clientConnection = Optional.of(conn);
+            conn.addMessageHandlerFX((conn2, message) -> {
+                System.out.println("Client received message: " + message.getName());
+                if (message.getName().equals("serverReady")) {
+                    System.out.println("Client received 'serverReady'. Spawning player.");
+                    spawnPlayer();  // Spawn the client's player when server is ready
+                } else if (message.getName().equals("progressData")) {
+                    double progress = message.get("progress");
+                    movePlayer1(progress);
+                }
+            });
+        });
+        client.connectAsync();
+        System.out.println("Client started connection asynchronously");
     }
 
     @Override
@@ -116,7 +208,7 @@ public class HelloApplication extends GameApplication {
 
             // Dodaj logikę dla pola tekstowego
             textField.textProperty().addListener((observable, oldValue, newValue) -> {
-                if (newValue.length() < oldValue.length()) {
+                if (newValue.length() < oldValue.length() && !newValue.isEmpty()) {
                     // Tekst został skrócony, co oznacza użycie backspace
                     handleBackspacePressed();
                 } else if (newValue.length() > oldValue.length()) {
@@ -133,13 +225,54 @@ public class HelloApplication extends GameApplication {
     }
 
     private void movePlayer(double progress) {
-        double newX = 100 + (progress * 1000);
-        player.setX(newX);
+        if (player != null) {
+            double newX = 100 + (progress * 1000);
+            player.setX(newX);
+            System.out.println("Moved player to X: " + newX);
+
+            // Broadcast progress to server
+            if (!isServer) {
+                Bundle bundle = new Bundle("progressData");
+                bundle.put("progress", progress);
+                clientConnection.ifPresent(conn -> {
+                    conn.send(bundle);
+                    System.out.println("Client sent progress update to server");
+                });
+            }
+        } else {
+            System.out.println("Cannot move player: player is null");
+        }
+    }
+
+    private void movePlayer1(double progress) {
+        if (player1 == null) {
+            System.out.println("Spawning player1");
+            player1 = FXGL.spawn("player", 100, 150);
+        }
+        if (player1 != null) {
+            double newX = 100 + (progress * 1000);
+            player1.setX(newX);
+            System.out.println("Moved player1 to X: " + newX);
+        } else {
+            System.out.println("Failed to spawn or move player1");
+        }
     }
 
     private void handleProgressUpdate() {
-        double progress = (double) currentWordIndex / wordsInTextToType.length;
-        movePlayer(progress);
+        if (player != null) {
+            double progress = (double) currentWordIndex / wordsInTextToType.length;
+            movePlayer(progress);
+
+            // Broadcast progress to clients if server
+            if (isServer) {
+                Bundle bundle = new Bundle("progressData");
+                bundle.put("progress", progress);
+                server.broadcast(bundle);
+                System.out.println("Server broadcast progress update");
+            }
+        } else {
+            System.out.println("Cannot handle progress update: player is null");
+        }
     }
 
     private void handleBackspacePressed() {
@@ -166,9 +299,6 @@ public class HelloApplication extends GameApplication {
         String currentWord = wordsInTextToType[currentWordIndex];
         char expectedChar = currentWordLetterIndex < currentWord.length() ? currentWord.charAt(currentWordLetterIndex) : ' ';
 
-        // Update expected letter display
-        updateExpectedLetterDisplay();
-
         // Get the container for the current word
         HBox wordContainer = (HBox) textFlow.getChildren().get(currentWordIndex * 2);
 
@@ -181,6 +311,9 @@ public class HelloApplication extends GameApplication {
             }
 
             currentWordLetterIndex++;
+
+            // Aktualizuj wyświetlanie oczekiwanej litery po każdym poprawnym naciśnięciu klawisza
+            updateExpectedLetterDisplay();
 
             // Move to next word if current word is completed
             if (currentWordLetterIndex > currentWord.length()) {
@@ -196,6 +329,9 @@ public class HelloApplication extends GameApplication {
                     textField.clear();
                     textField.setText("");
                 });
+
+                // Aktualizuj wyświetlanie oczekiwanej litery po przejściu do nowego słowa
+                updateExpectedLetterDisplay();
             }
         } else {
             // Incorrect key pressed
@@ -206,7 +342,6 @@ public class HelloApplication extends GameApplication {
             }
             // Do not increment currentWordLetterIndex for incorrect input
         }
-
         handleProgressUpdate();
     }
 
@@ -218,10 +353,13 @@ public class HelloApplication extends GameApplication {
 
         String currentWord = wordsInTextToType[currentWordIndex];
         if (currentWordLetterIndex < currentWord.length()) {
+            // Pokazujemy następną literę, którą użytkownik powinien wpisać
             exp_letter.setText(String.valueOf(currentWord.charAt(currentWordLetterIndex)));
         } else if (currentWordIndex + 1 < wordsInTextToType.length) {
+            // Jeśli to koniec słowa, pokazujemy "spacja"
             exp_letter.setText("spacja");
         } else {
+            // Jeśli to ostatnie słowo i ostatnia litera, pokazujemy koniec tekstu
             exp_letter.setText("- Koniec tekstu -");
         }
     }
@@ -288,6 +426,16 @@ public class HelloApplication extends GameApplication {
                 currentWordIndex++; // Inkrementacja licznika słów
             }
         }
+    }
+
+    public void setMyFlag(boolean flag) {
+        this.isServer = flag;
+        System.out.println("Set isServer flag to: " + flag);
+    }
+
+    public void setTraining(boolean flag) {
+        this.isTraining = flag;
+        System.out.println("Set isTraining flag to: " + flag);
     }
 
     public static void main(String[] args) {

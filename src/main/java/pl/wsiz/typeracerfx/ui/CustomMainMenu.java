@@ -10,6 +10,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
+import pl.wsiz.typeracerfx.HelloApplication;
 
 public class CustomMainMenu extends FXGLMenu {
 
@@ -39,7 +40,11 @@ public class CustomMainMenu extends FXGLMenu {
 
         // Set button actions
         btnMulti.setOnAction(e -> gotoMultiplayerMenu());
-        btnStart.setOnAction(e -> fireNewGame());
+        btnStart.setOnAction(e -> {
+            FXGL.<HelloApplication>getAppCast().setMyFlag(true);
+            FXGL.<HelloApplication>getAppCast().setTraining(true);
+            FXGL.getGameController().startNewGame();
+        });
         btnExit.setOnAction(e -> FXGL.getGameController().exit());
         btnSettings.setOnAction(e -> gotoSettingsMenu());  // Updated action for settings
 
