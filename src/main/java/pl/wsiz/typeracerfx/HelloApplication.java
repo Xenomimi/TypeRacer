@@ -9,6 +9,7 @@ import com.almasb.fxgl.core.serialization.Bundle;
 import com.almasb.fxgl.dsl.FXGL;
 import com.almasb.fxgl.entity.Entity;
 import com.almasb.fxgl.entity.EntityFactory;
+import com.almasb.fxgl.entity.SpawnData;
 import com.almasb.fxgl.multiplayer.MultiplayerService;
 import com.almasb.fxgl.net.Connection;
 import com.almasb.fxgl.net.Server;
@@ -117,7 +118,8 @@ public class HelloApplication extends GameApplication {
 
     private void spawnPlayer() {
         System.out.println("Attempting to spawn player");
-        localPlayer = FXGL.spawn("player", 100, 100);
+        SpawnData data = new SpawnData(100, 100).put("name", "Player 1");
+        localPlayer = FXGL.spawn("player", data);
         if (localPlayer != null) {
             System.out.println("Player spawned successfully. Position: " + localPlayer.getPosition());
         } else {
@@ -271,7 +273,8 @@ public class HelloApplication extends GameApplication {
     private void moveRemotePlayer(double progress) {
         if (remotePlayer == null) {
             System.out.println("Spawning remote player");
-            remotePlayer = FXGL.spawn("player", 100, 150);
+            SpawnData data = new SpawnData(100, 150).put("name", "Player 2");
+            remotePlayer = FXGL.spawn("player", data);
         }
         if (remotePlayer != null) {
             double newX = 100 + (progress * 1000);
