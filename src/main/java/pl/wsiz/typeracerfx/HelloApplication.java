@@ -67,6 +67,11 @@ public class HelloApplication extends GameApplication {
     private boolean isTraining = false;
     private Connection<Bundle> connection;
 
+    // Stan gry na serwerze
+    private Bundle gameStateBundle;
+    private boolean textInitialized = false;
+    private Entity localPlayer;
+    private Entity remotePlayer;
 
     @Override
     protected void initSettings(GameSettings settings) {
@@ -112,9 +117,9 @@ public class HelloApplication extends GameApplication {
 
     private void spawnPlayer() {
         System.out.println("Attempting to spawn player");
-        player = FXGL.spawn("player", 100, 100);
-        if (player != null) {
-            System.out.println("Player spawned successfully. Position: " + player.getPosition());
+        localPlayer = FXGL.spawn("player", 100, 100);
+        if (localPlayer != null) {
+            System.out.println("Player spawned successfully. Position: " + localPlayer.getPosition());
         } else {
             System.out.println("Failed to spawn player!");
         }
@@ -131,17 +136,23 @@ public class HelloApplication extends GameApplication {
                 System.out.println("Server received message: " + message.getName());
                 if (message.getName().equals("progressData")) {
                     double progress = message.get("progress");
-                    movePlayer1(progress);
-
+                    boolean isFromServer = message.get("isServer");
+                    if (!isFromServer) {
+                        moveRemotePlayer(progress);
+                    }
                     // Broadcast the progress to all clients
                     server.broadcast(message);
                 }
             });
 
-            // Notify the client that the server is ready
-            Bundle readyBundle = new Bundle("serverReady");
-            conn.send(readyBundle);
-            System.out.println("Server sent 'serverReady' message to client");
+            // Przygotuj bundle z aktualnym stanem gry
+            gameStateBundle = new Bundle("gameState");
+            gameStateBundle.put("timeLeft", timeLeft);
+            gameStateBundle.put("textToType", textToType);
+
+            // Wyślij stan gry do klienta
+            conn.send(gameStateBundle);
+            System.out.println("Server sent game state to client");
         });
         server.startAsync();
         System.out.println("Server started asynchronously");
@@ -155,12 +166,23 @@ public class HelloApplication extends GameApplication {
             clientConnection = Optional.of(conn);
             conn.addMessageHandlerFX((conn2, message) -> {
                 System.out.println("Client received message: " + message.getName());
-                if (message.getName().equals("serverReady")) {
-                    System.out.println("Client received 'serverReady'. Spawning player.");
-                    spawnPlayer();  // Spawn the client's player when server is ready
+                if (message.getName().equals("gameState")) {
+                    // Odbierz i ustaw stan gry
+                    timeLeft = message.get("timeLeft");
+                    textToType = message.get("textToType");
+                    Platform.runLater(() -> {
+                        updateDisplayedTime();
+                        fillTextFlow();
+                        textInitialized = true;
+                    });
+                    System.out.println("Client received and set game state");
+                    spawnPlayer();  // Spawn the client's player when game state is received
                 } else if (message.getName().equals("progressData")) {
                     double progress = message.get("progress");
-                    movePlayer1(progress);
+                    boolean isFromServer = message.get("isServer");
+                    if (isFromServer) {
+                        moveRemotePlayer(progress);
+                    }
                 }
             });
         });
@@ -173,7 +195,7 @@ public class HelloApplication extends GameApplication {
         try {
             // Load UI from FXML file
             FXMLLoader loader = new FXMLLoader(getClass().getResource("hello-view.fxml"));
-            AnchorPane root = loader.load();  // Załaduj główny layout z FXML
+            AnchorPane root = loader.load();
 
             // Pobierz kontroler
             Controller controller = loader.getController();
@@ -196,12 +218,8 @@ public class HelloApplication extends GameApplication {
                 }
             }, Duration.seconds(1));
 
-            updateDisplayedTime(); // Pierwsze aktualizowanie wyświetlacza czasu
-            // Dodaje root do sceny FXGL, nie bezpośrednio do JavaFX Scene
+            updateDisplayedTime();
             FXGL.addUINode(root);
-
-            // Załaduj tekst do przepisania
-            fillTextFlow();
 
             // Dodaj styl CSS
             root.getStylesheets().add(getClass().getResource("/assets/ui/css/style.css").toExternalForm());
@@ -209,14 +227,16 @@ public class HelloApplication extends GameApplication {
             // Dodaj logikę dla pola tekstowego
             textField.textProperty().addListener((observable, oldValue, newValue) -> {
                 if (newValue.length() < oldValue.length() && !newValue.isEmpty()) {
-                    // Tekst został skrócony, co oznacza użycie backspace
                     handleBackspacePressed();
                 } else if (newValue.length() > oldValue.length()) {
-                    // Nowy znak został dodany
                     handleKeyPressed(newValue.charAt(oldValue.length()));
                 }
             });
 
+            // Inicjalizuj tekst tylko jeśli nie jesteśmy klientem lub tekst już został zainicjalizowany
+            if (isServer || textInitialized) {
+                fillTextFlow();
+            }
 
         } catch (IOException e) {
             System.out.println("Failed to load FXML file.");
@@ -225,53 +245,49 @@ public class HelloApplication extends GameApplication {
     }
 
     private void movePlayer(double progress) {
-        if (player != null) {
+        if (localPlayer != null) {
             double newX = 100 + (progress * 1000);
-            player.setX(newX);
-            System.out.println("Moved player to X: " + newX);
+            localPlayer.setX(newX);
+            System.out.println("Moved local player to X: " + newX);
 
-            // Broadcast progress to server
-            if (!isServer) {
-                Bundle bundle = new Bundle("progressData");
-                bundle.put("progress", progress);
+            // Broadcast progress to server or other clients
+            Bundle bundle = new Bundle("progressData");
+            bundle.put("progress", progress);
+            bundle.put("isServer", isServer);
+            if (isServer) {
+                server.broadcast(bundle);
+                System.out.println("Server broadcast progress update");
+            } else {
                 clientConnection.ifPresent(conn -> {
                     conn.send(bundle);
                     System.out.println("Client sent progress update to server");
                 });
             }
         } else {
-            System.out.println("Cannot move player: player is null");
+            System.out.println("Cannot move player: local player is null");
         }
     }
 
-    private void movePlayer1(double progress) {
-        if (player1 == null) {
-            System.out.println("Spawning player1");
-            player1 = FXGL.spawn("player", 100, 150);
+    private void moveRemotePlayer(double progress) {
+        if (remotePlayer == null) {
+            System.out.println("Spawning remote player");
+            remotePlayer = FXGL.spawn("player", 100, 150);
         }
-        if (player1 != null) {
+        if (remotePlayer != null) {
             double newX = 100 + (progress * 1000);
-            player1.setX(newX);
-            System.out.println("Moved player1 to X: " + newX);
+            remotePlayer.setX(newX);
+            System.out.println("Moved remote player to X: " + newX);
         } else {
-            System.out.println("Failed to spawn or move player1");
+            System.out.println("Failed to spawn or move remote player");
         }
     }
 
     private void handleProgressUpdate() {
-        if (player != null) {
+        if (localPlayer != null) {
             double progress = (double) currentWordIndex / wordsInTextToType.length;
             movePlayer(progress);
-
-            // Broadcast progress to clients if server
-            if (isServer) {
-                Bundle bundle = new Bundle("progressData");
-                bundle.put("progress", progress);
-                server.broadcast(bundle);
-                System.out.println("Server broadcast progress update");
-            }
         } else {
-            System.out.println("Cannot handle progress update: player is null");
+            System.out.println("Cannot handle progress update: local player is null");
         }
     }
 
@@ -365,23 +381,26 @@ public class HelloApplication extends GameApplication {
     }
 
     private void fillTextFlow() {
-        // Losowanie odpowiednio długiego tekstu do przepisania
-        ApiCall apiCall = new ApiCall();
-        String textToAdd = apiCall.sendGetRequest();
-        while (textToAdd.length() < 150 || textToAdd.length() > 600) {
-            textToAdd = apiCall.sendGetRequest();
+        if (!textInitialized) {
+            if (isServer) {
+                // Losowanie odpowiednio długiego tekstu do przepisania tylko na serwerze
+                ApiCall apiCall = new ApiCall();
+                String textToAdd = apiCall.sendGetRequest();
+                while (textToAdd.length() < 150 || textToAdd.length() > 600) {
+                    textToAdd = apiCall.sendGetRequest();
+                }
+                textToType = textToAdd;
+            }
+            // W przeciwnym razie używamy textToType ustawionego przez klienta
+
+            // Rozdzielenie tekstu na słowa
+            wordsInTextToType = textToType.split("\\s+");
         }
 
-        // Rozdzielenie tekstu na słowa
-        wordsInTextToType = textToAdd.split("\\s+");  // Dzieli tekst na słowa używając spacji jako separatora
-
-        // Przypisanie do zmiennej globalnej
-        textToType = textToAdd;
         textFlow.getChildren().clear();
 
         // Uzupełnienie pola TextFlow literami o odpowiednich klasach CSS
         for (String word : wordsInTextToType) {
-            // Dla każdego słowa tworzymy osobny kontener (HBox), aby łatwiej było zarządzać stylem całego słowa
             HBox wordContainer = new HBox();
 
             for (int i = 0; i < word.length(); i++) {
@@ -390,15 +409,14 @@ public class HelloApplication extends GameApplication {
                 wordContainer.getChildren().add(label);
             }
 
-            // Dodanie spacji jako Label pomiędzy słowami, aby zachować odstępy
             Label space = new Label(" ");
             space.setFont(Font.font("Arial", 25));
 
-            // Dodawanie słowa do TextFlow
             textFlow.getChildren().add(wordContainer);
             textFlow.getChildren().add(space);
         }
         underlineWordInTextFlow(textFlow, currentWordIndex, true);
+        textInitialized = true;
     }
 
     public void underlineWordInTextFlow(TextFlow textFlow, int wordIndex, boolean underline) {
