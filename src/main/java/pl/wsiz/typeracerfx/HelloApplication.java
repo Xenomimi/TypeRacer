@@ -4,29 +4,19 @@ import com.almasb.fxgl.app.GameApplication;
 import com.almasb.fxgl.app.GameSettings;
 import com.almasb.fxgl.app.scene.FXGLMenu;
 import com.almasb.fxgl.app.scene.SceneFactory;
-import com.almasb.fxgl.core.math.FXGLMath;
 import com.almasb.fxgl.core.serialization.Bundle;
 import com.almasb.fxgl.dsl.FXGL;
 import com.almasb.fxgl.entity.Entity;
-import com.almasb.fxgl.entity.EntityFactory;
 import com.almasb.fxgl.entity.SpawnData;
 import com.almasb.fxgl.multiplayer.MultiplayerService;
 import com.almasb.fxgl.net.Connection;
 import com.almasb.fxgl.net.Server;
-import com.almasb.fxgl.scene.Scene;
-import com.almasb.fxgl.texture.Texture;
-import com.almasb.fxgl.ui.DialogFactoryService;
-import com.almasb.fxgl.ui.DialogService;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.Pane;
-import javafx.scene.layout.StackPane;
-import javafx.scene.paint.Color;
-import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
@@ -36,13 +26,10 @@ import java.io.IOException;
 
 import javafx.util.Duration;
 
-import java.util.Arrays;
-import java.util.Objects;
 import java.util.Optional;
 
 import javafx.application.Platform;
-
-import static com.almasb.fxgl.dsl.FXGLForKtKt.*;
+import pl.wsiz.typeracerfx.ui.CustomPauseGameMenu;
 
 
 public class HelloApplication extends GameApplication {
@@ -87,6 +74,10 @@ public class HelloApplication extends GameApplication {
             @Override
             public FXGLMenu newMainMenu() {
                 return new CustomMainMenu();
+            }
+            @Override
+            public FXGLMenu newGameMenu() {
+                return new CustomPauseGameMenu();
             }
         });
         System.out.println("Settings initialized. isServer: " + isServer + ", isTraining: " + isTraining);
