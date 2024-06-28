@@ -1,4 +1,5 @@
 package pl.wsiz.typeracerfx;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -7,12 +8,20 @@ import java.net.URL;
 import java.util.Random;
 
 public class ApiCall {
+    public String bookUrl = "https://wolnelektury.pl/media/book/txt/lalka-tom-pierwszy.txt";
+
+    public void setBookUrl(String bookUrl) {
+        this.bookUrl = bookUrl;
+    }
+
     public String sendGetRequest() {
         String finalText = "";
 
         try {
             // Tworzenie obiektu URL z adresem API Wolnych Lektur
-            URL url = new URL("https://wolnelektury.pl/media/book/txt/lalka-tom-pierwszy.txt");
+            URL url = new URL(bookUrl);
+
+            System.out.println(bookUrl);
 
             // Otwieranie połączenia HTTP
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
@@ -56,6 +65,10 @@ public class ApiCall {
                 finalText = finalText.replace("”", "\"");
 
                 finalText = finalText.replace("–", "-");
+
+                finalText = finalText.replace("»", "");
+
+                finalText = finalText.replace("«", "");
 
                 System.out.println(finalText);
 

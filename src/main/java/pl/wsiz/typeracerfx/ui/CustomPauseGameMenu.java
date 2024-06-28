@@ -10,13 +10,18 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
+import pl.wsiz.typeracerfx.ApiCall;
+import pl.wsiz.typeracerfx.HelloApplication;
 
 public class CustomPauseGameMenu extends FXGLMenu {
     private static final int TILE_SIZE = 200;
     private static final int TILE_GAP = 10;
+    private ApiCall apiCall;
 
-    public CustomPauseGameMenu() {
+    public CustomPauseGameMenu(ApiCall apiCall) {
         super(MenuType.GAME_MENU);
+        this.apiCall = apiCall;
+
 
         var background = new Rectangle(FXGL.getAppWidth(), FXGL.getAppHeight());
         background.setFill(Color.color(0.1, 0.1, 0.1, 0.8));
@@ -62,6 +67,10 @@ public class CustomPauseGameMenu extends FXGLMenu {
     }
 
     private void returnToMainMenu() {
-        FXGL.getSceneService().pushSubScene(new CustomMainMenu());
+        FXGL.<HelloApplication>getAppCast().cleanupAndExit();
+        FXGL.<HelloApplication>getAppCast().setMyFlag(true);
+        FXGL.<HelloApplication>getAppCast().setTraining(false);
+        FXGL.getSceneService().pushSubScene(new CustomMainMenu(apiCall));
+
     }
 }

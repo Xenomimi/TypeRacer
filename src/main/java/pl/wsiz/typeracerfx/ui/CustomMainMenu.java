@@ -10,14 +10,17 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
+import pl.wsiz.typeracerfx.ApiCall;
 import pl.wsiz.typeracerfx.HelloApplication;
 
 public class CustomMainMenu extends FXGLMenu {
 
     private VBox menuBox;
+    private ApiCall apiCall;
 
-    public CustomMainMenu() {
+    public CustomMainMenu(ApiCall apiCall) {
         super(MenuType.MAIN_MENU);
+        this.apiCall = apiCall;
 
         // Load and set the background image
         ImageView background = new ImageView(FXGL.image("main_background.png"));
@@ -41,7 +44,7 @@ public class CustomMainMenu extends FXGLMenu {
         // Set button actions
         btnMulti.setOnAction(e -> gotoMultiplayerMenu());
         btnStart.setOnAction(e -> {
-            FXGL.<HelloApplication>getAppCast().setMyFlag(true);
+            FXGL.<HelloApplication>getAppCast().setMyFlag(false);
             FXGL.<HelloApplication>getAppCast().setTraining(true);
             FXGL.getGameController().startNewGame();
         });
@@ -73,11 +76,11 @@ public class CustomMainMenu extends FXGLMenu {
 
     private void gotoSettingsMenu() {
         FXGL.getSceneService().popSubScene();
-        FXGL.getSceneService().pushSubScene(new SettingsMenu());
+        FXGL.getSceneService().pushSubScene(new SettingsMenu(apiCall));
     }
 
     private void gotoMultiplayerMenu() {
         FXGL.getSceneService().popSubScene();
-        FXGL.getSceneService().pushSubScene(new MultiplayerMenu());
+        FXGL.getSceneService().pushSubScene(new MultiplayerMenu(apiCall));
     }
 }

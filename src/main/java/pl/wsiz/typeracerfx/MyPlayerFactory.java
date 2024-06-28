@@ -31,7 +31,7 @@ public class MyPlayerFactory implements EntityFactory {
         // Add the text to the game world
         FXGL.getGameScene().addUINode(playerName);
 
-        // Optional: Update text position when player moves
+        // Update text position when player moves
         player.xProperty().addListener((obs, old, newValue) -> playerName.setTranslateX(newValue.doubleValue() - playerName.getLayoutBounds().getWidth() - 10));
         player.yProperty().addListener((obs, old, newValue) -> playerName.setTranslateY(newValue.doubleValue() + player.getBoundingBoxComponent().getHeight() / 2));
 

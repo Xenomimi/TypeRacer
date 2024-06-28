@@ -13,6 +13,8 @@ import com.almasb.fxgl.net.Connection;
 import com.almasb.fxgl.net.Server;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.AnchorPane;
@@ -27,6 +29,7 @@ import java.io.IOException;
 import javafx.util.Duration;
 
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 import javafx.application.Platform;
 import pl.wsiz.typeracerfx.ui.CustomPauseGameMenu;
@@ -41,7 +44,7 @@ public class HelloApplication extends GameApplication {
     private boolean uiInitialized = false;
     private Entity player;
     private Entity player1;
-    private double timeLeft = 120;
+    private double timeLeft;
 
     private String textToType;
     private int currentIndex = 0;
@@ -51,7 +54,7 @@ public class HelloApplication extends GameApplication {
 
     private Server<Bundle> server;
     private Optional<Connection<Bundle>> clientConnection = Optional.empty();
-    private boolean isServer = true;
+    private boolean isServer = false;
     private boolean isTraining = false;
     private Connection<Bundle> connection;
 
@@ -60,6 +63,8 @@ public class HelloApplication extends GameApplication {
     private boolean textInitialized = false;
     private Entity localPlayer;
     private Entity remotePlayer;
+
+    private ApiCall apiCall;
 
     @Override
     protected void initSettings(GameSettings settings) {
@@ -73,18 +78,22 @@ public class HelloApplication extends GameApplication {
         settings.setSceneFactory(new SceneFactory() {
             @Override
             public FXGLMenu newMainMenu() {
-                return new CustomMainMenu();
+                apiCall = new ApiCall();
+                return new CustomMainMenu(apiCall);
             }
             @Override
             public FXGLMenu newGameMenu() {
-                return new CustomPauseGameMenu();
+                return new CustomPauseGameMenu(apiCall);
             }
         });
         System.out.println("Settings initialized. isServer: " + isServer + ", isTraining: " + isTraining);
+
     }
 
     @Override
     protected void initGame() {
+
+
         System.out.println("Initializing game. isServer: " + isServer + ", isTraining: " + isTraining);
 
         FXGL.getGameWorld().addEntityFactory(new MyPlayerFactory());
@@ -94,10 +103,11 @@ public class HelloApplication extends GameApplication {
             System.out.println("Running initialization. isServer: " + isServer + ", isTraining: " + isTraining);
             if (isTraining) {
                 System.out.println("Initializing training mode");
+                timeLeft = 100;
                 spawnPlayer();
-                isTraining = false;
             } else if (isServer) {
                 System.out.println("Initializing server");
+                timeLeft = 100;
                 initServer();
                 spawnPlayer();  // Spawn player immediately for server
             } else {
@@ -154,6 +164,7 @@ public class HelloApplication extends GameApplication {
     private void initClient() {
         System.out.println("Setting up client");
         var client = FXGL.getNetService().newTCPClient("localhost", 55555);
+
         client.setOnConnected(conn -> {
             System.out.println("Client connected to server");
             clientConnection = Optional.of(conn);
@@ -179,8 +190,23 @@ public class HelloApplication extends GameApplication {
                 }
             });
         });
+
+        // Dodajemy obsługę błędu połączenia
+        FXGL.getExecutor().schedule(() -> {
+            if (!clientConnection.isPresent()) {
+                System.out.println("Connection failed: Timeout");
+                Platform.runLater(this::showConnectionErrorDialog);
+            }
+        }, Duration.seconds(2));
+
         client.connectAsync();
         System.out.println("Client started connection asynchronously");
+    }
+
+    private void showConnectionErrorDialog() {
+        FXGL.getDialogService().showMessageBox("Nie znaleziono serwera!", () -> {
+            FXGL.getGameController().gotoMainMenu();
+        });
     }
 
     @Override
@@ -206,6 +232,7 @@ public class HelloApplication extends GameApplication {
                     FXGL.getGameTimer().clear();
                     FXGL.getDialogService().showMessageBox("Czas się skończył!", () -> {
                         // Przejście do menu głównego
+                        resetGameVariables();
                         FXGL.getGameController().gotoMainMenu();
                     });
                 }
@@ -227,7 +254,7 @@ public class HelloApplication extends GameApplication {
             });
 
             // Inicjalizuj tekst tylko jeśli nie jesteśmy klientem lub tekst już został zainicjalizowany
-            if (isServer || textInitialized) {
+            if (isServer || textInitialized || isTraining) {
                 fillTextFlow();
             }
 
@@ -243,18 +270,20 @@ public class HelloApplication extends GameApplication {
             localPlayer.setX(newX);
             System.out.println("Moved local player to X: " + newX);
 
-            // Broadcast progress to server or other clients
-            Bundle bundle = new Bundle("progressData");
-            bundle.put("progress", progress);
-            bundle.put("isServer", isServer);
-            if (isServer) {
-                server.broadcast(bundle);
-                System.out.println("Server broadcast progress update");
-            } else {
-                clientConnection.ifPresent(conn -> {
-                    conn.send(bundle);
-                    System.out.println("Client sent progress update to server");
-                });
+            // Broadcast progress to server or other clients if not training
+            if (!isTraining) {
+                Bundle bundle = new Bundle("progressData");
+                bundle.put("progress", progress);
+                bundle.put("isServer", isServer);
+                if (isServer) {
+                    server.broadcast(bundle);
+                    System.out.println("Server broadcast progress update");
+                } else {
+                    clientConnection.ifPresent(conn -> {
+                        conn.send(bundle);
+                        System.out.println("Client sent progress update to server");
+                    });
+                }
             }
         } else {
             System.out.println("Cannot move player: local player is null");
@@ -376,9 +405,8 @@ public class HelloApplication extends GameApplication {
 
     private void fillTextFlow() {
         if (!textInitialized) {
-            if (isServer) {
+            if (isServer || isTraining) {
                 // Losowanie odpowiednio długiego tekstu do przepisania tylko na serwerze
-                ApiCall apiCall = new ApiCall();
                 String textToAdd = apiCall.sendGetRequest();
                 while (textToAdd.length() < 150 || textToAdd.length() > 600) {
                     textToAdd = apiCall.sendGetRequest();
@@ -440,14 +468,40 @@ public class HelloApplication extends GameApplication {
         }
     }
 
+    public void cleanupAndExit() {
+        if (isServer && server != null) {
+            System.out.println("Shutting down server...");
+            server.stop();
+            server = null;
+        }
+        resetGameVariables();
+        FXGL.getGameController().gotoMainMenu();
+    }
+
+    public void resetGameVariables() {
+        currentIndex = 0;
+        currentWordLetterIndex = 0;
+        currentWordIndex = 0;
+        textToType = "";
+        wordsInTextToType = null;
+        timeLeft = 0;
+        textInitialized = false;
+        clientConnection = Optional.empty();
+        localPlayer = null;
+        remotePlayer = null;
+        System.out.println("Game variables have been reset");
+    }
+
     public void setMyFlag(boolean flag) {
         this.isServer = flag;
-        System.out.println("Set isServer flag to: " + flag);
+        this.isTraining = false;
+        System.out.println("Set isServer flag to: " + flag + ", isTraining set to false");
     }
 
     public void setTraining(boolean flag) {
         this.isTraining = flag;
-        System.out.println("Set isTraining flag to: " + flag);
+        this.isServer = false;
+        System.out.println("Set isTraining flag to: " + flag + ", isServer set to false");
     }
 
     public static void main(String[] args) {

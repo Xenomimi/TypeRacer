@@ -15,6 +15,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
+import pl.wsiz.typeracerfx.ApiCall;
 import pl.wsiz.typeracerfx.HelloApplication;
 
 import static com.almasb.fxgl.dsl.FXGLForKtKt.*;
@@ -22,9 +23,11 @@ import static com.almasb.fxgl.dsl.FXGLForKtKt.*;
 public class MultiplayerMenu extends FXGLMenu {
 
     private VBox menuBox;
+    private ApiCall apiCall;
 
-    public MultiplayerMenu() {
+    public MultiplayerMenu(ApiCall apiCall) {
         super(MenuType.MAIN_MENU);
+        this.apiCall = apiCall;
 
         // Load and set the background image
         ImageView background = new ImageView(FXGL.image("main_background.png"));
@@ -95,6 +98,6 @@ public class MultiplayerMenu extends FXGLMenu {
 
     private void gotoMainMenu() {
         FXGL.getSceneService().popSubScene();
-        FXGL.getSceneService().pushSubScene(new CustomMainMenu());
+        FXGL.getSceneService().pushSubScene(new CustomMainMenu(apiCall));
     }
 }
