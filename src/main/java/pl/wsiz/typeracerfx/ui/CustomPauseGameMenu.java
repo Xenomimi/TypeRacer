@@ -71,6 +71,5 @@ public class CustomPauseGameMenu extends FXGLMenu {
         FXGL.<HelloApplication>getAppCast().setMyFlag(true);
         FXGL.<HelloApplication>getAppCast().setTraining(false);
         FXGL.getSceneService().pushSubScene(new CustomMainMenu(apiCall));
-
     }
 }

@@ -9,6 +9,9 @@ import javafx.scene.text.TextFlow;
 public class Controller {
 
     @FXML
+    public Text wpm;
+
+    @FXML
     private TextArea textArea;
 
     @FXML
@@ -22,6 +25,8 @@ public class Controller {
 
     @FXML
     private TextFlow textFlow;
+
+    public Text getWPM() { return wpm; }
 
     public TextArea getTextArea() {
         return textArea;

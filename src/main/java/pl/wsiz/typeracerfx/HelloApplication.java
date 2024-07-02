@@ -12,13 +12,12 @@ import com.almasb.fxgl.multiplayer.MultiplayerService;
 import com.almasb.fxgl.net.Connection;
 import com.almasb.fxgl.net.Server;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Pos;
 import javafx.scene.Node;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.Dialog;
-import javafx.scene.control.Label;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
@@ -57,6 +56,12 @@ public class HelloApplication extends GameApplication {
     private boolean isServer = false;
     private boolean isTraining = false;
     private Connection<Bundle> connection;
+
+    // Licznik WPM
+    private long startTime;
+    private int correctCharCount = 0;
+    private Text wpmText;
+    private boolean isGameFinished = false;
 
     // Stan gry na serwerze
     private Bundle gameStateBundle;
@@ -258,6 +263,11 @@ public class HelloApplication extends GameApplication {
                 fillTextFlow();
             }
 
+            wpmText = controller.getWPM();
+            updateWPM();
+
+            startWPMTimer();
+
         } catch (IOException e) {
             System.out.println("Failed to load FXML file.");
             e.printStackTrace();
@@ -335,26 +345,26 @@ public class HelloApplication extends GameApplication {
             return;
         }
 
+        if (startTime == 0) {
+            startTime = System.currentTimeMillis();
+        }
+
         String currentWord = wordsInTextToType[currentWordIndex];
         char expectedChar = currentWordLetterIndex < currentWord.length() ? currentWord.charAt(currentWordLetterIndex) : ' ';
 
-        // Get the container for the current word
         HBox wordContainer = (HBox) textFlow.getChildren().get(currentWordIndex * 2);
 
         if (key == expectedChar) {
-            // Correct key pressed
             if (currentWordLetterIndex < currentWord.length()) {
                 Label correctLabel = (Label) wordContainer.getChildren().get(currentWordLetterIndex);
                 correctLabel.getStyleClass().clear();
                 correctLabel.getStyleClass().add("text-correct");
+                correctCharCount++;
             }
 
             currentWordLetterIndex++;
-
-            // Aktualizuj wyświetlanie oczekiwanej litery po każdym poprawnym naciśnięciu klawisza
             updateExpectedLetterDisplay();
 
-            // Move to next word if current word is completed
             if (currentWordLetterIndex > currentWord.length()) {
                 currentWordIndex++;
                 currentWordLetterIndex = 0;
@@ -363,24 +373,25 @@ public class HelloApplication extends GameApplication {
                     underlineWordInTextFlow(textFlow, currentWordIndex, true);
                 }
 
-                // Clear the TextField after completing a word
                 Platform.runLater(() -> {
                     textField.clear();
                     textField.setText("");
                 });
 
-                // Aktualizuj wyświetlanie oczekiwanej litery po przejściu do nowego słowa
                 updateExpectedLetterDisplay();
             }
         } else {
-            // Incorrect key pressed
             if (currentWordLetterIndex < currentWord.length()) {
                 Label errorLabel = (Label) wordContainer.getChildren().get(currentWordLetterIndex);
                 errorLabel.getStyleClass().clear();
                 errorLabel.getStyleClass().add("text-error");
             }
-            // Do not increment currentWordLetterIndex for incorrect input
         }
+
+        if (currentWordIndex >= wordsInTextToType.length) {
+            finishGame();
+        }
+
         handleProgressUpdate();
     }
 
@@ -489,6 +500,10 @@ public class HelloApplication extends GameApplication {
         clientConnection = Optional.empty();
         localPlayer = null;
         remotePlayer = null;
+        startTime = 0;
+        correctCharCount = 0;
+        isGameFinished = false;
+        updateWPM();
         System.out.println("Game variables have been reset");
     }
 
@@ -502,6 +517,62 @@ public class HelloApplication extends GameApplication {
         this.isTraining = flag;
         this.isServer = false;
         System.out.println("Set isTraining flag to: " + flag + ", isServer set to false");
+    }
+
+    private void startWPMTimer() {
+        FXGL.run(() -> {
+            if (!isGameFinished) {
+                updateWPM();
+            }
+        }, Duration.seconds(1));
+    }
+
+    private void updateWPM() {
+        if (startTime == 0) return;
+
+        long elapsedTime = System.currentTimeMillis() - startTime;
+        double minutes = elapsedTime / 60000.0;
+        double wpm = (correctCharCount / 5.0) / minutes;
+
+        Platform.runLater(() -> wpmText.setText(String.format("%.0f WPM", wpm)));
+    }
+
+    private void showGameFinishedDialog(double finalWPM, long totalTimeSeconds) {
+        Button btnGoBack = FXGL.getUIFactoryService().newButton("Back to Main Menu");
+        btnGoBack.setOnAction(e -> {
+            cleanupAndExit();
+            setMyFlag(true);
+            setTraining(false);
+            FXGL.getSceneService().pushSubScene(new CustomMainMenu(apiCall));
+        });
+
+        Text titleText = FXGL.getUIFactoryService().newText("Game Finished");
+        titleText.setStyle("-fx-font-size: 24px; -fx-font-weight: bold;");
+
+        Text wpmText = FXGL.getUIFactoryService().newText(String.format("Your WPM: %.0f", finalWPM));
+        Text timeText = FXGL.getUIFactoryService().newText(String.format("Total Time: %d seconds", totalTimeSeconds));
+
+        VBox content = new VBox(10,
+                titleText,
+                wpmText,
+                timeText,
+                btnGoBack
+        );
+        content.setAlignment(Pos.CENTER);
+
+        // Używamy showBox zamiast showMessageBox
+        FXGL.getDialogService().showBox("Game Results", content);
+    }
+
+    private void finishGame() {
+        isGameFinished = true;
+        long endTime = System.currentTimeMillis();
+        long totalTimeMillis = endTime - startTime;
+        long totalTimeSeconds = totalTimeMillis / 1000;
+        double finalWPM = (correctCharCount / 5.0) / (totalTimeMillis / 60000.0);
+
+        // Używamy Platform.runLater, aby upewnić się, że UI jest aktualizowane w wątku JavaFX
+        Platform.runLater(() -> showGameFinishedDialog(finalWPM, totalTimeSeconds));
     }
 
     public static void main(String[] args) {
