@@ -14,7 +14,9 @@ import com.almasb.fxgl.net.Server;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
-import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
@@ -28,7 +30,6 @@ import java.io.IOException;
 import javafx.util.Duration;
 
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 
 import javafx.application.Platform;
 import pl.wsiz.typeracerfx.ui.CustomPauseGameMenu;
@@ -38,7 +39,7 @@ public class HelloApplication extends GameApplication {
 
     private TextFlow textFlow;
     private TextField textField;
-    private Text exp_letter;
+    public Text exp_letter;
     private Text time;
     private boolean uiInitialized = false;
     private Entity player;
@@ -46,22 +47,22 @@ public class HelloApplication extends GameApplication {
     private double timeLeft;
 
     private String textToType;
-    private int currentIndex = 0;
+    int currentIndex = 0;
     private int currentWordLetterIndex = 0;
     private int currentWordIndex = 0;
     private String[] wordsInTextToType;
 
     private Server<Bundle> server;
     private Optional<Connection<Bundle>> clientConnection = Optional.empty();
-    private boolean isServer = false;
-    private boolean isTraining = false;
+    public boolean isServer = false;
+    public boolean isTraining = false;
     private Connection<Bundle> connection;
 
     // Licznik WPM
     private long startTime;
     private int correctCharCount = 0;
     private Text wpmText;
-    private boolean isGameFinished = false;
+    public boolean isGameFinished = false;
 
     // Stan gry na serwerze
     private Bundle gameStateBundle;
@@ -97,15 +98,14 @@ public class HelloApplication extends GameApplication {
 
     @Override
     protected void initGame() {
-
-
-        System.out.println("Initializing game. isServer: " + isServer + ", isTraining: " + isTraining);
-
-        FXGL.getGameWorld().addEntityFactory(new MyPlayerFactory());
-        System.out.println("EntityFactory added to GameWorld");
-
+        // Ensure FXGL services are fully initialized
         FXGL.runOnce(() -> {
-            System.out.println("Running initialization. isServer: " + isServer + ", isTraining: " + isTraining);
+            System.out.println("Initializing game. isServer: " + isServer + ", isTraining: " + isTraining);
+
+            // Add entity factory
+            FXGL.getGameWorld().addEntityFactory(new MyPlayerFactory());
+            System.out.println("EntityFactory added to GameWorld");
+
             if (isTraining) {
                 System.out.println("Initializing training mode");
                 timeLeft = 100;
@@ -119,7 +119,7 @@ public class HelloApplication extends GameApplication {
                 System.out.println("Initializing client");
                 initClient();
             }
-        }, Duration.seconds(0.2));
+        }, Duration.seconds(0.2));  // Delay execution slightly to ensure FXGL is ready
     }
 
     private void spawnPlayer() {
@@ -300,7 +300,7 @@ public class HelloApplication extends GameApplication {
         }
     }
 
-    private void moveRemotePlayer(double progress) {
+    public void moveRemotePlayer(double progress) {
         if (remotePlayer == null) {
             System.out.println("Spawning remote player");
             SpawnData data = new SpawnData(100, 150).put("name", "Player 2");
@@ -315,7 +315,7 @@ public class HelloApplication extends GameApplication {
         }
     }
 
-    private void handleProgressUpdate() {
+    public void handleProgressUpdate() {
         if (localPlayer != null) {
             double progress = (double) currentWordIndex / wordsInTextToType.length;
             movePlayer(progress);
@@ -338,7 +338,7 @@ public class HelloApplication extends GameApplication {
         time.setText(timeText);
     }
 
-    private void handleKeyPressed(char key) {
+    public void handleKeyPressed(char key) {
         if (currentWordIndex >= wordsInTextToType.length) {
             System.out.println("Koniec tekstu");
             textField.setDisable(true);
@@ -414,7 +414,7 @@ public class HelloApplication extends GameApplication {
         }
     }
 
-    private void fillTextFlow() {
+    public void fillTextFlow() {
         if (!textInitialized) {
             if (isServer || isTraining) {
                 // Losowanie odpowiednio długiego tekstu do przepisania tylko na serwerze
@@ -519,7 +519,7 @@ public class HelloApplication extends GameApplication {
         System.out.println("Set isTraining flag to: " + flag + ", isServer set to false");
     }
 
-    private void startWPMTimer() {
+    public void startWPMTimer() {
         FXGL.run(() -> {
             if (!isGameFinished) {
                 updateWPM();
@@ -573,9 +573,5 @@ public class HelloApplication extends GameApplication {
 
         // Używamy Platform.runLater, aby upewnić się, że UI jest aktualizowane w wątku JavaFX
         Platform.runLater(() -> showGameFinishedDialog(finalWPM, totalTimeSeconds));
-    }
-
-    public static void main(String[] args) {
-        launch(args);
     }
 }

@@ -4,6 +4,8 @@ module pl.wsiz.typeracerfx {
 
     requires com.almasb.fxgl.all;
     requires com.fasterxml.jackson.databind;
+    requires org.testng;
+    requires org.junit.jupiter.api;
 
     opens assets.textures;
     opens assets.ui.css;

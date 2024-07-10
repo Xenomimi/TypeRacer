@@ -49,26 +49,7 @@ public class ApiCall {
                 Random random = new Random();
                 finalText += lines[random.nextInt(maxline - minline) + minline];
 
-                // Usunięcie pierwszego znaku spacji
-                finalText = finalText.substring(1);
-
-                finalText = finalText.replace("— ", "");
-
-                finalText = finalText.replace("\n", " ");
-
-                finalText = finalText.replace("  ", " ");
-
-                finalText = finalText.replace("…", "...");
-
-                finalText = finalText.replace("„", "\"");
-
-                finalText = finalText.replace("”", "\"");
-
-                finalText = finalText.replace("–", "-");
-
-                finalText = finalText.replace("»", "");
-
-                finalText = finalText.replace("«", "");
+                finalText = processText(finalText);
 
                 System.out.println(finalText);
 
@@ -84,5 +65,30 @@ public class ApiCall {
         }
 
         return finalText.substring(0);
+    }
+
+    public String processText(String inputText) {
+        // Usunięcie pierwszego znaku spacji
+        inputText = inputText.substring(1);
+
+        inputText = inputText.replace("— ", "");
+
+        inputText = inputText.replace("\n", " ");
+
+        inputText = inputText.replace("  ", " ");
+
+        inputText = inputText.replace("…", "...");
+
+        inputText = inputText.replace("„", "\"");
+
+        inputText = inputText.replace("”", "\"");
+
+        inputText = inputText.replace("–", "-");
+
+        inputText = inputText.replace("»", "");
+
+        inputText = inputText.replace("«", "");
+
+        return inputText;
     }
 }
