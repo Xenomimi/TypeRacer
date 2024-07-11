@@ -574,4 +574,8 @@ public class HelloApplication extends GameApplication {
         // Używamy Platform.runLater, aby upewnić się, że UI jest aktualizowane w wątku JavaFX
         Platform.runLater(() -> showGameFinishedDialog(finalWPM, totalTimeSeconds));
     }
+
+    public static void main(String[] args) {
+        launch(args);
+    }
 }
